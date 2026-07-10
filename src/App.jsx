@@ -79,7 +79,9 @@ export default function App() {
 
     const unsubTeams = onValue(ref(db, "teams"), (snap) => {
       const val = snap.val();
-      if (val) setTeams(val);
+      // Firebase는 빈 배열([])을 가진 키를 자동으로 지워버리므로,
+      // 항상 defaultTeams()로 9개 조 키를 다 채운 뒤 실제 값으로 덮어쓴다.
+      setTeams({ ...defaultTeams(), ...(val || {}) });
       teamsLoaded = true;
       maybeDone();
     }, () => { teamsLoaded = true; maybeDone(); });
@@ -276,16 +278,18 @@ export default function App() {
       {tab === "teams" && (
         <div className="panel">
           <div className="teams-grid">
-            {TEAM_IDS.map((id) => (
+            {TEAM_IDS.map((id) => {
+              const roster = teams[id] || [];
+              return (
               <div className="team-card" key={id}>
                 <div className="team-card-head">
                   <span className="dot lg" style={{ background: TEAM_COLORS[id] }} />
                   <span className="team-name">{id}조</span>
-                  <span className="team-count">{teams[id].length}명</span>
+                  <span className="team-count">{roster.length}명</span>
                 </div>
                 <div className="member-list">
-                  {teams[id].length === 0 && <div className="empty-hint">등록된 인원이 없습니다</div>}
-                  {teams[id].map((name, idx) => (
+                  {roster.length === 0 && <div className="empty-hint">등록된 인원이 없습니다</div>}
+                  {roster.map((name, idx) => (
                     <div className="member-row" key={idx}>
                       <span>{name}</span>
                       <button className="icon-btn small" onClick={() => removeMember(id, idx)}><Trash2 size={13} /></button>
@@ -302,7 +306,8 @@ export default function App() {
                   <button className="icon-btn" onClick={() => addMember(id)}><Plus size={15} /></button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
