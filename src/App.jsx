@@ -43,6 +43,16 @@ const HOLIDAYS_2026 = {
   "2026-12-25": "크리스마스",
 };
 
+// ── 관리자 일정표: P직군(3개조) / 직책자(2개조), 월~일 단위로 동일 조 유지 ──
+const ADMIN_P_IDS = ["P1", "P2", "P3"];
+const ADMIN_J_IDS = ["J1", "J2"];
+const ADMIN_P_LABELS = { P1: "P1조", P2: "P2조", P3: "P3조" };
+const ADMIN_J_LABELS = { J1: "직책자1조", J2: "직책자2조" };
+const ADMIN_P_COLORS = { P1: "#4FC79A", P2: "#4FA9E8", P3: "#8B87E8" };
+const ADMIN_J_COLORS = { J1: "#F0A63C", J2: "#E86A6A" };
+// 기준: 2026-07-06(월요일)이 속한 주 = P1조 / 직책자1조
+const ADMIN_BASE_MONDAY_UTC = Date.UTC(2026, 6, 6);
+
 function pad(n) { return String(n).padStart(2, "0"); }
 function dateKey(y, m, d) { return `${y}-${pad(m)}-${pad(d)}`; }
 function teamForUTC(utcMs) {
@@ -50,9 +60,34 @@ function teamForUTC(utcMs) {
   let idx = (BASE_INDEX + (diff % 9) + 9) % 9;
   return TEAM_IDS[idx];
 }
+function mondayUTCOfWeek(utcMs) {
+  const d = new Date(utcMs);
+  const day = d.getUTCDay(); // 0=일 ... 6=토
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + diffToMonday);
+}
+function adminWeekDiff(utcMs) {
+  const mon = mondayUTCOfWeek(utcMs);
+  return Math.round((mon - ADMIN_BASE_MONDAY_UTC) / (7 * 86400000));
+}
+function adminPTeamForUTC(utcMs) {
+  const diff = adminWeekDiff(utcMs);
+  const idx = ((diff % 3) + 3) % 3;
+  return ADMIN_P_IDS[idx];
+}
+function adminJTeamForUTC(utcMs) {
+  const diff = adminWeekDiff(utcMs);
+  const idx = ((diff % 2) + 2) % 2;
+  return ADMIN_J_IDS[idx];
+}
 function defaultTeams() {
   const t = {};
   TEAM_IDS.forEach((id) => (t[id] = []));
+  return t;
+}
+function defaultAdminTeams() {
+  const t = {};
+  [...ADMIN_P_IDS, ...ADMIN_J_IDS].forEach((id) => (t[id] = []));
   return t;
 }
 function todayKey() {
@@ -65,17 +100,26 @@ export default function App() {
   const [month, setMonth] = useState(7); // 1-12
   const [teams, setTeams] = useState(defaultTeams());
   const [subs, setSubs] = useState({});
+  const [adminTeams, setAdminTeams] = useState(defaultAdminTeams());
+  const [adminSubs, setAdminSubs] = useState({});
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("calendar");
   const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedAdminDate, setSelectedAdminDate] = useState(null);
   const [saving, setSaving] = useState(false);
   const [newMemberInputs, setNewMemberInputs] = useState({});
+  const [newAdminMemberInputs, setNewAdminMemberInputs] = useState({});
   const [subForm, setSubForm] = useState({ original: "", substitute: "", note: "" });
+  const [adminSubForm, setAdminSubForm] = useState({ group: "", original: "", substitute: "", note: "" });
 
   useEffect(() => {
     let teamsLoaded = false;
     let subsLoaded = false;
-    const maybeDone = () => { if (teamsLoaded && subsLoaded) setLoading(false); };
+    let adminTeamsLoaded = false;
+    let adminSubsLoaded = false;
+    const maybeDone = () => {
+      if (teamsLoaded && subsLoaded && adminTeamsLoaded && adminSubsLoaded) setLoading(false);
+    };
 
     const unsubTeams = onValue(ref(db, "teams"), (snap) => {
       const val = snap.val();
@@ -93,7 +137,21 @@ export default function App() {
       maybeDone();
     }, () => { subsLoaded = true; maybeDone(); });
 
-    return () => { unsubTeams(); unsubSubs(); };
+    const unsubAdminTeams = onValue(ref(db, "adminTeams"), (snap) => {
+      const val = snap.val();
+      setAdminTeams({ ...defaultAdminTeams(), ...(val || {}) });
+      adminTeamsLoaded = true;
+      maybeDone();
+    }, () => { adminTeamsLoaded = true; maybeDone(); });
+
+    const unsubAdminSubs = onValue(ref(db, "adminSubs"), (snap) => {
+      const val = snap.val();
+      if (val) setAdminSubs(val);
+      adminSubsLoaded = true;
+      maybeDone();
+    }, () => { adminSubsLoaded = true; maybeDone(); });
+
+    return () => { unsubTeams(); unsubSubs(); unsubAdminTeams(); unsubAdminSubs(); };
   }, []);
 
   const persistTeams = useCallback((next) => {
@@ -118,6 +176,50 @@ export default function App() {
   const removeMember = (teamId, idx) => {
     const next = { ...teams, [teamId]: teams[teamId].filter((_, i) => i !== idx) };
     persistTeams(next);
+  };
+
+  const persistAdminTeams = useCallback((next) => {
+    setAdminTeams(next);
+    setSaving(true);
+    set(ref(db, "adminTeams"), next).finally(() => setSaving(false));
+  }, []);
+
+  const persistAdminSubs = useCallback((next) => {
+    setAdminSubs(next);
+    setSaving(true);
+    set(ref(db, "adminSubs"), next).finally(() => setSaving(false));
+  }, []);
+
+  const addAdminMember = (teamId) => {
+    const name = (newAdminMemberInputs[teamId] || "").trim();
+    if (!name) return;
+    const next = { ...adminTeams, [teamId]: [...adminTeams[teamId], name] };
+    persistAdminTeams(next);
+    setNewAdminMemberInputs({ ...newAdminMemberInputs, [teamId]: "" });
+  };
+  const removeAdminMember = (teamId, idx) => {
+    const next = { ...adminTeams, [teamId]: adminTeams[teamId].filter((_, i) => i !== idx) };
+    persistAdminTeams(next);
+  };
+
+  const addAdminSub = () => {
+    if (!selectedAdminDate || !adminSubForm.group || !adminSubForm.original || !adminSubForm.substitute.trim()) return;
+    const list = adminSubs[selectedAdminDate] ? [...adminSubs[selectedAdminDate]] : [];
+    list.push({
+      id: Date.now().toString(36),
+      group: adminSubForm.group,
+      original: adminSubForm.original,
+      substitute: adminSubForm.substitute.trim(),
+      note: adminSubForm.note.trim(),
+    });
+    persistAdminSubs({ ...adminSubs, [selectedAdminDate]: list });
+    setAdminSubForm({ group: "", original: "", substitute: "", note: "" });
+  };
+  const removeAdminSub = (dKey, id) => {
+    const list = (adminSubs[dKey] || []).filter((s) => s.id !== id);
+    const next = { ...adminSubs };
+    if (list.length) next[dKey] = list; else delete next[dKey];
+    persistAdminSubs(next);
   };
 
   const addSub = () => {
@@ -177,6 +279,20 @@ export default function App() {
     return { y, m, d, team, roster, daySubs, holiday, weekday };
   }, [selectedDate, teams, subs]);
 
+  const selectedAdminInfo = useMemo(() => {
+    if (!selectedAdminDate) return null;
+    const [y, m, d] = selectedAdminDate.split("-").map(Number);
+    const utc = Date.UTC(y, m - 1, d);
+    const pTeam = adminPTeamForUTC(utc);
+    const jTeam = adminJTeamForUTC(utc);
+    const pRoster = adminTeams[pTeam] || [];
+    const jRoster = adminTeams[jTeam] || [];
+    const daySubs = adminSubs[selectedAdminDate] || [];
+    const holiday = HOLIDAYS_2026[selectedAdminDate];
+    const weekday = new Date(utc).getUTCDay();
+    return { y, m, d, pTeam, jTeam, pRoster, jRoster, daySubs, holiday, weekday };
+  }, [selectedAdminDate, adminTeams, adminSubs]);
+
   if (loading) {
     return (
       <div style={{ minHeight: 420, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)", color: "var(--muted)", fontFamily: "Inter, sans-serif" }}>
@@ -201,8 +317,14 @@ export default function App() {
           <button className={tab === "calendar" ? "tab active" : "tab"} onClick={() => setTab("calendar")}>
             <CalendarDays size={15} /> 일정표
           </button>
+          <button className={tab === "adminCalendar" ? "tab active" : "tab"} onClick={() => setTab("adminCalendar")}>
+            <CalendarDays size={15} /> 관리자 일정표
+          </button>
           <button className={tab === "teams" ? "tab active" : "tab"} onClick={() => setTab("teams")}>
             <Users size={15} /> 조 인원 관리
+          </button>
+          <button className={tab === "adminTeams" ? "tab active" : "tab"} onClick={() => setTab("adminTeams")}>
+            <Users size={15} /> 관리자 인원 관리
           </button>
         </div>
       </div>
@@ -275,6 +397,66 @@ export default function App() {
         </div>
       )}
 
+      {tab === "adminCalendar" && (
+        <div className="panel">
+          <div className="month-nav">
+            <button className="icon-btn" onClick={() => changeMonth(-1)}><ChevronLeft size={18} /></button>
+            <div className="month-label">{year}년 {month}월</div>
+            <button className="icon-btn" onClick={() => changeMonth(1)}><ChevronRight size={18} /></button>
+            <button className="today-btn" onClick={() => { const n = new Date(); setYear(n.getFullYear()); setMonth(n.getMonth() + 1); }}>오늘</button>
+          </div>
+
+          <div className="legend">
+            {ADMIN_P_IDS.map((id) => (
+              <div key={id} className="legend-item">
+                <span className="dot" style={{ background: ADMIN_P_COLORS[id] }} />{ADMIN_P_LABELS[id]}
+              </div>
+            ))}
+            {ADMIN_J_IDS.map((id) => (
+              <div key={id} className="legend-item">
+                <span className="dot" style={{ background: ADMIN_J_COLORS[id] }} />{ADMIN_J_LABELS[id]}
+              </div>
+            ))}
+          </div>
+          <div className="share-note" style={{ margin: "0 0 14px" }}>월요일에 조가 바뀌며, 한 주(월~일) 동안 같은 조가 유지됩니다.</div>
+
+          <div className="weekday-row">
+            {WEEKDAYS.map((w, i) => (
+              <div key={w} className={"weekday " + (i === 0 ? "sun" : i === 6 ? "sat" : "")}>{w}</div>
+            ))}
+          </div>
+
+          <div className="grid">
+            {grid.map((c) => {
+              const dKey = dateKey(c.y, c.m, c.day);
+              const pTeam = adminPTeamForUTC(c.utc);
+              const jTeam = adminJTeamForUTC(c.utc);
+              const holiday = HOLIDAYS_2026[dKey];
+              const daySubs = adminSubs[dKey];
+              const isToday = dKey === todayKey();
+              return (
+                <button
+                  key={dKey}
+                  className={"cell" + (c.inMonth ? "" : " dim") + (isToday ? " today" : "")}
+                  style={{ borderTopColor: ADMIN_P_COLORS[pTeam] }}
+                  onClick={() => setSelectedAdminDate(dKey)}
+                >
+                  <div className="cell-top">
+                    <span className={"cell-date" + (c.weekday === 0 ? " sun" : c.weekday === 6 ? " sat" : "") + (holiday ? " holiday" : "")}>{c.day}</span>
+                    <span className="cell-badge-row">
+                      <span className="cell-badge sm" style={{ background: ADMIN_P_COLORS[pTeam] }}>{pTeam}</span>
+                      <span className="cell-badge sm" style={{ background: ADMIN_J_COLORS[jTeam] }}>{jTeam}</span>
+                    </span>
+                  </div>
+                  {holiday && <div className="cell-holiday">{holiday}</div>}
+                  {daySubs && daySubs.length > 0 && <div className="cell-sub-dot" title="대근 있음" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {tab === "teams" && (
         <div className="panel">
           <div className="teams-grid">
@@ -306,6 +488,78 @@ export default function App() {
                   <button className="icon-btn" onClick={() => addMember(id)}><Plus size={15} /></button>
                 </div>
               </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {tab === "adminTeams" && (
+        <div className="panel">
+          <div className="modal-section-title">P직군 (3개 조)</div>
+          <div className="teams-grid" style={{ marginBottom: 20 }}>
+            {ADMIN_P_IDS.map((id) => {
+              const roster = adminTeams[id] || [];
+              return (
+                <div className="team-card" key={id}>
+                  <div className="team-card-head">
+                    <span className="dot lg" style={{ background: ADMIN_P_COLORS[id] }} />
+                    <span className="team-name">{ADMIN_P_LABELS[id]}</span>
+                    <span className="team-count">{roster.length}명</span>
+                  </div>
+                  <div className="member-list">
+                    {roster.length === 0 && <div className="empty-hint">등록된 인원이 없습니다</div>}
+                    {roster.map((name, idx) => (
+                      <div className="member-row" key={idx}>
+                        <span>{name}</span>
+                        <button className="icon-btn small" onClick={() => removeAdminMember(id, idx)}><Trash2 size={13} /></button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="add-row">
+                    <input
+                      placeholder="이름 입력"
+                      value={newAdminMemberInputs[id] || ""}
+                      onChange={(e) => setNewAdminMemberInputs({ ...newAdminMemberInputs, [id]: e.target.value })}
+                      onKeyDown={(e) => { if (e.key === "Enter") addAdminMember(id); }}
+                    />
+                    <button className="icon-btn" onClick={() => addAdminMember(id)}><Plus size={15} /></button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="modal-section-title">직책자 (2개 조)</div>
+          <div className="teams-grid">
+            {ADMIN_J_IDS.map((id) => {
+              const roster = adminTeams[id] || [];
+              return (
+                <div className="team-card" key={id}>
+                  <div className="team-card-head">
+                    <span className="dot lg" style={{ background: ADMIN_J_COLORS[id] }} />
+                    <span className="team-name">{ADMIN_J_LABELS[id]}</span>
+                    <span className="team-count">{roster.length}명</span>
+                  </div>
+                  <div className="member-list">
+                    {roster.length === 0 && <div className="empty-hint">등록된 인원이 없습니다</div>}
+                    {roster.map((name, idx) => (
+                      <div className="member-row" key={idx}>
+                        <span>{name}</span>
+                        <button className="icon-btn small" onClick={() => removeAdminMember(id, idx)}><Trash2 size={13} /></button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="add-row">
+                    <input
+                      placeholder="이름 입력"
+                      value={newAdminMemberInputs[id] || ""}
+                      onChange={(e) => setNewAdminMemberInputs({ ...newAdminMemberInputs, [id]: e.target.value })}
+                      onKeyDown={(e) => { if (e.key === "Enter") addAdminMember(id); }}
+                    />
+                    <button className="icon-btn" onClick={() => addAdminMember(id)}><Plus size={15} /></button>
+                  </div>
+                </div>
               );
             })}
           </div>
@@ -363,6 +617,89 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {selectedAdminInfo && (
+        <div className="modal-backdrop" onClick={() => setSelectedAdminDate(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <div>
+                <div className="modal-date">{selectedAdminInfo.y}년 {selectedAdminInfo.m}월 {selectedAdminInfo.d}일 ({WEEKDAYS[selectedAdminInfo.weekday]})</div>
+                {selectedAdminInfo.holiday && <div className="modal-holiday">{selectedAdminInfo.holiday}</div>}
+              </div>
+              <button className="icon-btn" onClick={() => setSelectedAdminDate(null)}><X size={18} /></button>
+            </div>
+
+            <div className="modal-team">
+              <span className="dot lg" style={{ background: ADMIN_P_COLORS[selectedAdminInfo.pTeam] }} />
+              <span>P직군 <strong>{ADMIN_P_LABELS[selectedAdminInfo.pTeam]}</strong></span>
+            </div>
+            <div className="roster-list" style={{ marginBottom: 14 }}>
+              {selectedAdminInfo.pRoster.length === 0 && <div className="empty-hint">{ADMIN_P_LABELS[selectedAdminInfo.pTeam]}에 등록된 인원이 없습니다. 관리자 인원 관리 탭에서 먼저 등록해주세요.</div>}
+              {selectedAdminInfo.pRoster.map((name) => {
+                const sub = selectedAdminInfo.daySubs.find((s) => s.group === "P" && s.original === name);
+                return (
+                  <div className="roster-row" key={"P-" + name}>
+                    {sub ? (
+                      <span className="sub-swap"><span className="struck">{name}</span> <ArrowLeftRight size={12} /> <strong>{sub.substitute}</strong></span>
+                    ) : (
+                      <span>{name}</span>
+                    )}
+                    {sub && <button className="icon-btn small" onClick={() => removeAdminSub(selectedAdminDate, sub.id)}><Trash2 size={13} /></button>}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="modal-team">
+              <span className="dot lg" style={{ background: ADMIN_J_COLORS[selectedAdminInfo.jTeam] }} />
+              <span>직책자 <strong>{ADMIN_J_LABELS[selectedAdminInfo.jTeam]}</strong></span>
+            </div>
+            <div className="roster-list">
+              {selectedAdminInfo.jRoster.length === 0 && <div className="empty-hint">{ADMIN_J_LABELS[selectedAdminInfo.jTeam]}에 등록된 인원이 없습니다. 관리자 인원 관리 탭에서 먼저 등록해주세요.</div>}
+              {selectedAdminInfo.jRoster.map((name) => {
+                const sub = selectedAdminInfo.daySubs.find((s) => s.group === "J" && s.original === name);
+                return (
+                  <div className="roster-row" key={"J-" + name}>
+                    {sub ? (
+                      <span className="sub-swap"><span className="struck">{name}</span> <ArrowLeftRight size={12} /> <strong>{sub.substitute}</strong></span>
+                    ) : (
+                      <span>{name}</span>
+                    )}
+                    {sub && <button className="icon-btn small" onClick={() => removeAdminSub(selectedAdminDate, sub.id)}><Trash2 size={13} /></button>}
+                  </div>
+                );
+              })}
+            </div>
+
+            {(selectedAdminInfo.pRoster.length > 0 || selectedAdminInfo.jRoster.length > 0) && (
+              <div className="sub-form">
+                <div className="modal-section-title">대근 등록</div>
+                <select
+                  value={adminSubForm.group}
+                  onChange={(e) => setAdminSubForm({ ...adminSubForm, group: e.target.value, original: "" })}
+                >
+                  <option value="">그룹 선택</option>
+                  <option value="P">P직군 ({ADMIN_P_LABELS[selectedAdminInfo.pTeam]})</option>
+                  <option value="J">직책자 ({ADMIN_J_LABELS[selectedAdminInfo.jTeam]})</option>
+                </select>
+                <select
+                  value={adminSubForm.original}
+                  onChange={(e) => setAdminSubForm({ ...adminSubForm, original: e.target.value })}
+                  disabled={!adminSubForm.group}
+                >
+                  <option value="">원래 인원 선택</option>
+                  {(adminSubForm.group === "P" ? selectedAdminInfo.pRoster : adminSubForm.group === "J" ? selectedAdminInfo.jRoster : [])
+                    .filter((name) => !selectedAdminInfo.daySubs.some((s) => s.group === adminSubForm.group && s.original === name))
+                    .map((name) => <option value={name} key={name}>{name}</option>)}
+                </select>
+                <input placeholder="대근자 이름" value={adminSubForm.substitute} onChange={(e) => setAdminSubForm({ ...adminSubForm, substitute: e.target.value })} />
+                <input placeholder="메모 (선택)" value={adminSubForm.note} onChange={(e) => setAdminSubForm({ ...adminSubForm, note: e.target.value })} />
+                <button className="add-sub-btn" onClick={addAdminSub}><Plus size={14} /> 대근 등록</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -384,7 +721,7 @@ const STYLE = `
 .header-title { display: flex; gap: 10px; align-items: flex-start; }
 .header-title h1 { font-family: 'Space Grotesk', sans-serif; font-size: 18px; margin: 0; letter-spacing: -0.01em; }
 .header-title p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
-.tabs { display: flex; gap: 6px; background: var(--panel-alt); padding: 4px; border-radius: 9px; border: 1px solid var(--border); }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; background: var(--panel-alt); padding: 4px; border-radius: 9px; border: 1px solid var(--border); }
 .tab { display: flex; align-items: center; gap: 6px; background: transparent; border: none; color: var(--muted); font-size: 12.5px; padding: 7px 12px; border-radius: 6px; cursor: pointer; font-family: inherit; }
 .tab.active { background: var(--panel); color: var(--text); }
 .share-note { font-size: 11px; color: var(--muted); margin: 10px 2px 14px; }
@@ -416,6 +753,8 @@ const STYLE = `
 .cell-date.sat { color: #4FA9E8; }
 .cell-date.holiday { color: var(--red); font-weight: 700; }
 .cell-badge { color: #0B1120; font-size: 11.5px; font-weight: 700; width: 21px; height: 21px; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+.cell-badge-row { display: flex; flex-direction: column; gap: 3px; align-items: flex-end; }
+.cell-badge.sm { width: auto; min-width: 24px; height: 16px; font-size: 9px; padding: 0 3px; border-radius: 4px; }
 .cell-holiday { font-size: 10px; color: var(--red); margin-top: auto; line-height: 1.2; }
 .cell-sub-dot { position: absolute; bottom: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); }
 .teams-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
@@ -451,4 +790,5 @@ const STYLE = `
   .cell-names { font-size: 9.5px; -webkit-line-clamp: 3; }
   .month-label { font-size: 16px; min-width: 90px; }
 }
+`;
 `;
