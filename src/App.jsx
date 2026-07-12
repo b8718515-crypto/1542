@@ -383,9 +383,9 @@ export default function App() {
                   {displayNames.length > 0 && (
                     <div className="cell-names">
                       {displayNames.map((n, i) => (
-                        <span key={i} className={n.subbed ? "cell-name subbed" : "cell-name"}>
-                          {n.name}{i < displayNames.length - 1 ? "," : ""}
-                        </span>
+                        <div key={i} className={n.subbed ? "cell-name subbed" : "cell-name"}>
+                          {n.name}
+                        </div>
                       ))}
                     </div>
                   )}
@@ -453,32 +453,24 @@ export default function App() {
                 >
                   <div className="cell-top">
                     <span className={"cell-date" + (c.weekday === 0 ? " sun" : c.weekday === 6 ? " sat" : "") + (holiday ? " holiday" : "")}>{c.day}</span>
-                    <span className="cell-badge-row">
-                      <span className="cell-badge sm" style={{ background: ADMIN_J_COLORS[jTeam] }}>{jTeam}</span>
-                      <span className="cell-badge sm" style={{ background: ADMIN_P_COLORS[pTeam] }}>{pTeam}</span>
+                    <span className="cell-dot-row">
+                      <span className="cell-dot" style={{ background: ADMIN_J_COLORS[jTeam] }} />
+                      <span className="cell-dot" style={{ background: ADMIN_P_COLORS[pTeam] }} />
                     </span>
                   </div>
                   {holiday && <div className="cell-holiday">{holiday}</div>}
                   {(pNames.length > 0 || jNames.length > 0) && (
                     <div className="admin-cell-names">
-                      {jNames.length > 0 && (
-                        <div className="admin-cell-names-row">
-                          {jNames.map((n, i) => (
-                            <span key={"j" + i} className={n.subbed ? "cell-name subbed" : "cell-name"}>
-                              {n.name}{i < jNames.length - 1 ? "," : ""}
-                            </span>
-                          ))}
+                      {jNames.map((n, i) => (
+                        <div key={"j" + i} className={n.subbed ? "cell-name subbed" : "cell-name"}>
+                          {n.name}
                         </div>
-                      )}
-                      {pNames.length > 0 && (
-                        <div className="admin-cell-names-row">
-                          {pNames.map((n, i) => (
-                            <span key={"p" + i} className={n.subbed ? "cell-name subbed" : "cell-name"}>
-                              {n.name}{i < pNames.length - 1 ? "," : ""}
-                            </span>
-                          ))}
+                      ))}
+                      {pNames.map((n, i) => (
+                        <div key={"p" + i} className={n.subbed ? "cell-name subbed" : "cell-name"}>
+                          {n.name}
                         </div>
-                      )}
+                      ))}
                     </div>
                   )}
                   {daySubs && daySubs.length > 0 && <div className="cell-sub-dot" title="대근 있음" />}
@@ -775,11 +767,10 @@ const STYLE = `
 .weekday.sun { color: var(--red); }
 .weekday.sat { color: #4FA9E8; }
 .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
-.cell { background: var(--panel-alt); border: 1px solid var(--border); border-top: 3px solid; border-radius: 8px; min-height: 112px; padding: 9px; display: flex; flex-direction: column; cursor: pointer; text-align: left; font-family: inherit; position: relative; min-width: 0; overflow: hidden; }
-.cell-names { margin-top: 5px; font-size: 11px; line-height: 1.4; color: var(--muted); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; min-width: 0; }
-.admin-cell-names { margin-top: 5px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.admin-cell-names-row { font-size: 10px; line-height: 1.3; color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-width: 0; }
-.cell-name { margin-right: 2px; }
+.cell { background: var(--panel-alt); border: 1px solid var(--border); border-top: 3px solid; border-radius: 8px; min-height: 112px; padding: 9px; display: flex; flex-direction: column; cursor: pointer; text-align: left; font-family: inherit; position: relative; min-width: 0; }
+.cell-names { margin-top: 5px; display: flex; flex-direction: column; gap: 1px; font-size: 11px; line-height: 1.35; color: var(--muted); min-width: 0; }
+.admin-cell-names { margin-top: 5px; display: flex; flex-direction: column; gap: 1px; font-size: 10px; line-height: 1.3; color: var(--muted); min-width: 0; }
+.cell-name { overflow-wrap: break-word; }
 .cell-name.subbed { color: var(--amber); font-weight: 600; }
 .cell.dim { opacity: 0.35; }
 .cell.today { box-shadow: 0 0 0 2px var(--amber); }
@@ -788,9 +779,9 @@ const STYLE = `
 .cell-date.sun { color: var(--red); }
 .cell-date.sat { color: #4FA9E8; }
 .cell-date.holiday { color: var(--red); font-weight: 700; }
-.cell-badge { color: #0B1120; font-size: 11.5px; font-weight: 700; width: 21px; height: 21px; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
-.cell-badge-row { display: flex; flex-direction: column; gap: 3px; align-items: flex-end; }
-.cell-badge.sm { width: auto; min-width: 24px; height: 16px; font-size: 9px; padding: 0 3px; border-radius: 4px; }
+.cell-badge { color: #0B1120; font-size: 11.5px; font-weight: 700; width: 21px; height: 21px; border-radius: 6px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.cell-dot-row { display: flex; gap: 3px; align-items: center; flex-shrink: 0; }
+.cell-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 .cell-holiday { font-size: 10px; color: var(--red); margin-top: auto; line-height: 1.2; }
 .cell-sub-dot { position: absolute; bottom: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); }
 .teams-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
@@ -827,11 +818,12 @@ const STYLE = `
   .legend-item { font-size: 10px; gap: 3px; }
   .legend-item .dot { width: 7px; height: 7px; }
   .grid { gap: 5px; }
-  .cell { min-height: 80px; padding: 6px; }
+  .cell { min-height: 84px; padding: 6px; }
   .cell-date { font-size: 12px; }
   .cell-badge { width: 17px; height: 17px; font-size: 10px; }
-  .cell-names { font-size: 9.5px; -webkit-line-clamp: 3; }
-  .admin-cell-names-row { font-size: 9px; }
+  .cell-dot { width: 7px; height: 7px; }
+  .cell-names { font-size: 9.5px; }
+  .admin-cell-names { font-size: 9px; }
   .month-label { font-size: 16px; min-width: 90px; }
 }
 `;
