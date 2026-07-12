@@ -790,5 +790,3 @@ const STYLE = `
   .cell-names { font-size: 9.5px; -webkit-line-clamp: 3; }
   .month-label { font-size: 16px; min-width: 90px; }
 }
-`;
-`;
