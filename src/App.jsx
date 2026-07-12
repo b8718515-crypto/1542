@@ -753,8 +753,9 @@ const STYLE = `
 .header-title { display: flex; gap: 10px; align-items: flex-start; }
 .header-title h1 { font-family: 'Space Grotesk', sans-serif; font-size: 18px; margin: 0; letter-spacing: -0.01em; }
 .header-title p { margin: 2px 0 0; font-size: 12px; color: var(--muted); }
-.tabs { display: flex; flex-wrap: wrap; gap: 6px; background: var(--panel-alt); padding: 4px; border-radius: 9px; border: 1px solid var(--border); }
-.tab { display: flex; align-items: center; gap: 6px; background: transparent; border: none; color: var(--muted); font-size: 12.5px; padding: 7px 12px; border-radius: 6px; cursor: pointer; font-family: inherit; }
+.tabs { display: flex; flex-wrap: nowrap; gap: 6px; background: var(--panel-alt); padding: 4px; border-radius: 9px; border: 1px solid var(--border); overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; max-width: 100%; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { display: flex; align-items: center; gap: 6px; background: transparent; border: none; color: var(--muted); font-size: 12.5px; padding: 7px 12px; border-radius: 6px; cursor: pointer; font-family: inherit; white-space: nowrap; flex: 0 0 auto; }
 .tab.active { background: var(--panel); color: var(--text); }
 .share-note { font-size: 11px; color: var(--muted); margin: 10px 2px 14px; }
 .saving { color: var(--amber); }
@@ -768,15 +769,15 @@ const STYLE = `
 .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
 .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .dot.lg { width: 13px; height: 13px; }
-.weekday-row { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 8px; }
+.weekday-row { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); margin-bottom: 8px; }
 .weekday { text-align: center; font-size: 13px; color: var(--muted); padding: 6px 0; }
 .weekday.sun { color: var(--red); }
 .weekday.sat { color: #4FA9E8; }
-.grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
-.cell { background: var(--panel-alt); border: 1px solid var(--border); border-top: 3px solid; border-radius: 8px; min-height: 112px; padding: 9px; display: flex; flex-direction: column; cursor: pointer; text-align: left; font-family: inherit; position: relative; }
-.cell-names { margin-top: 5px; font-size: 11px; line-height: 1.4; color: var(--muted); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; }
-.admin-cell-names { margin-top: 5px; display: flex; flex-direction: column; gap: 2px; }
-.admin-cell-names-row { font-size: 10px; line-height: 1.3; color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.cell { background: var(--panel-alt); border: 1px solid var(--border); border-top: 3px solid; border-radius: 8px; min-height: 112px; padding: 9px; display: flex; flex-direction: column; cursor: pointer; text-align: left; font-family: inherit; position: relative; min-width: 0; overflow: hidden; }
+.cell-names { margin-top: 5px; font-size: 11px; line-height: 1.4; color: var(--muted); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; min-width: 0; }
+.admin-cell-names { margin-top: 5px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.admin-cell-names-row { font-size: 10px; line-height: 1.3; color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; min-width: 0; }
 .cell-name { margin-right: 2px; }
 .cell-name.subbed { color: var(--amber); font-weight: 600; }
 .cell.dim { opacity: 0.35; }
@@ -817,6 +818,9 @@ const STYLE = `
 .add-sub-btn { display: flex; align-items: center; justify-content: center; gap: 5px; background: var(--amber); color: #201400; border: none; border-radius: 7px; padding: 8px; font-size: 12.5px; font-weight: 600; cursor: pointer; margin-top: 2px; font-family: inherit; }
 @media (max-width: 520px) {
   .app-root { padding: 14px; }
+  .header-title { width: 100%; }
+  .tabs { width: 100%; }
+  .tab { font-size: 11px; padding: 7px 8px; gap: 4px; }
   .grid { gap: 5px; }
   .cell { min-height: 80px; padding: 6px; }
   .cell-date { font-size: 12px; }
