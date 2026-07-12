@@ -407,14 +407,14 @@ export default function App() {
           </div>
 
           <div className="legend">
-            {ADMIN_P_IDS.map((id) => (
-              <div key={id} className="legend-item">
-                <span className="dot" style={{ background: ADMIN_P_COLORS[id] }} />{ADMIN_P_LABELS[id]}
-              </div>
-            ))}
             {ADMIN_J_IDS.map((id) => (
               <div key={id} className="legend-item">
                 <span className="dot" style={{ background: ADMIN_J_COLORS[id] }} />{ADMIN_J_LABELS[id]}
+              </div>
+            ))}
+            {ADMIN_P_IDS.map((id) => (
+              <div key={id} className="legend-item">
+                <span className="dot" style={{ background: ADMIN_P_COLORS[id] }} />{ADMIN_P_LABELS[id]}
               </div>
             ))}
           </div>
@@ -454,27 +454,27 @@ export default function App() {
                   <div className="cell-top">
                     <span className={"cell-date" + (c.weekday === 0 ? " sun" : c.weekday === 6 ? " sat" : "") + (holiday ? " holiday" : "")}>{c.day}</span>
                     <span className="cell-badge-row">
-                      <span className="cell-badge sm" style={{ background: ADMIN_P_COLORS[pTeam] }}>{pTeam}</span>
                       <span className="cell-badge sm" style={{ background: ADMIN_J_COLORS[jTeam] }}>{jTeam}</span>
+                      <span className="cell-badge sm" style={{ background: ADMIN_P_COLORS[pTeam] }}>{pTeam}</span>
                     </span>
                   </div>
                   {holiday && <div className="cell-holiday">{holiday}</div>}
                   {(pNames.length > 0 || jNames.length > 0) && (
                     <div className="admin-cell-names">
-                      {pNames.length > 0 && (
-                        <div className="admin-cell-names-row">
-                          {pNames.map((n, i) => (
-                            <span key={"p" + i} className={n.subbed ? "cell-name subbed" : "cell-name"}>
-                              {n.name}{i < pNames.length - 1 ? "," : ""}
-                            </span>
-                          ))}
-                        </div>
-                      )}
                       {jNames.length > 0 && (
                         <div className="admin-cell-names-row">
                           {jNames.map((n, i) => (
                             <span key={"j" + i} className={n.subbed ? "cell-name subbed" : "cell-name"}>
                               {n.name}{i < jNames.length - 1 ? "," : ""}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {pNames.length > 0 && (
+                        <div className="admin-cell-names-row">
+                          {pNames.map((n, i) => (
+                            <span key={"p" + i} className={n.subbed ? "cell-name subbed" : "cell-name"}>
+                              {n.name}{i < pNames.length - 1 ? "," : ""}
                             </span>
                           ))}
                         </div>
@@ -662,15 +662,15 @@ export default function App() {
             </div>
 
             <div className="modal-team">
-              <span className="dot lg" style={{ background: ADMIN_P_COLORS[selectedAdminInfo.pTeam] }} />
-              <span>P직군 <strong>{ADMIN_P_LABELS[selectedAdminInfo.pTeam]}</strong></span>
+              <span className="dot lg" style={{ background: ADMIN_J_COLORS[selectedAdminInfo.jTeam] }} />
+              <span>직책자 <strong>{ADMIN_J_LABELS[selectedAdminInfo.jTeam]}</strong></span>
             </div>
             <div className="roster-list" style={{ marginBottom: 14 }}>
-              {selectedAdminInfo.pRoster.length === 0 && <div className="empty-hint">{ADMIN_P_LABELS[selectedAdminInfo.pTeam]}에 등록된 인원이 없습니다. 관리자 인원 관리 탭에서 먼저 등록해주세요.</div>}
-              {selectedAdminInfo.pRoster.map((name) => {
-                const sub = selectedAdminInfo.daySubs.find((s) => s.group === "P" && s.original === name);
+              {selectedAdminInfo.jRoster.length === 0 && <div className="empty-hint">{ADMIN_J_LABELS[selectedAdminInfo.jTeam]}에 등록된 인원이 없습니다. 관리자 인원 관리 탭에서 먼저 등록해주세요.</div>}
+              {selectedAdminInfo.jRoster.map((name) => {
+                const sub = selectedAdminInfo.daySubs.find((s) => s.group === "J" && s.original === name);
                 return (
-                  <div className="roster-row" key={"P-" + name}>
+                  <div className="roster-row" key={"J-" + name}>
                     {sub ? (
                       <span className="sub-swap"><span className="struck">{name}</span> <ArrowLeftRight size={12} /> <strong>{sub.substitute}</strong></span>
                     ) : (
@@ -683,15 +683,15 @@ export default function App() {
             </div>
 
             <div className="modal-team">
-              <span className="dot lg" style={{ background: ADMIN_J_COLORS[selectedAdminInfo.jTeam] }} />
-              <span>직책자 <strong>{ADMIN_J_LABELS[selectedAdminInfo.jTeam]}</strong></span>
+              <span className="dot lg" style={{ background: ADMIN_P_COLORS[selectedAdminInfo.pTeam] }} />
+              <span>P직군 <strong>{ADMIN_P_LABELS[selectedAdminInfo.pTeam]}</strong></span>
             </div>
             <div className="roster-list">
-              {selectedAdminInfo.jRoster.length === 0 && <div className="empty-hint">{ADMIN_J_LABELS[selectedAdminInfo.jTeam]}에 등록된 인원이 없습니다. 관리자 인원 관리 탭에서 먼저 등록해주세요.</div>}
-              {selectedAdminInfo.jRoster.map((name) => {
-                const sub = selectedAdminInfo.daySubs.find((s) => s.group === "J" && s.original === name);
+              {selectedAdminInfo.pRoster.length === 0 && <div className="empty-hint">{ADMIN_P_LABELS[selectedAdminInfo.pTeam]}에 등록된 인원이 없습니다. 관리자 인원 관리 탭에서 먼저 등록해주세요.</div>}
+              {selectedAdminInfo.pRoster.map((name) => {
+                const sub = selectedAdminInfo.daySubs.find((s) => s.group === "P" && s.original === name);
                 return (
-                  <div className="roster-row" key={"J-" + name}>
+                  <div className="roster-row" key={"P-" + name}>
                     {sub ? (
                       <span className="sub-swap"><span className="struck">{name}</span> <ArrowLeftRight size={12} /> <strong>{sub.substitute}</strong></span>
                     ) : (
