@@ -434,6 +434,16 @@ export default function App() {
               const holiday = HOLIDAYS_2026[dKey];
               const daySubs = adminSubs[dKey];
               const isToday = dKey === todayKey();
+              const pRoster = adminTeams[pTeam] || [];
+              const jRoster = adminTeams[jTeam] || [];
+              const pNames = pRoster.map((name) => {
+                const sub = daySubs && daySubs.find((s) => s.group === "P" && s.original === name);
+                return sub ? { name: sub.substitute, subbed: true } : { name, subbed: false };
+              });
+              const jNames = jRoster.map((name) => {
+                const sub = daySubs && daySubs.find((s) => s.group === "J" && s.original === name);
+                return sub ? { name: sub.substitute, subbed: true } : { name, subbed: false };
+              });
               return (
                 <button
                   key={dKey}
@@ -449,6 +459,28 @@ export default function App() {
                     </span>
                   </div>
                   {holiday && <div className="cell-holiday">{holiday}</div>}
+                  {(pNames.length > 0 || jNames.length > 0) && (
+                    <div className="admin-cell-names">
+                      {pNames.length > 0 && (
+                        <div className="admin-cell-names-row">
+                          {pNames.map((n, i) => (
+                            <span key={"p" + i} className={n.subbed ? "cell-name subbed" : "cell-name"}>
+                              {n.name}{i < pNames.length - 1 ? "," : ""}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {jNames.length > 0 && (
+                        <div className="admin-cell-names-row">
+                          {jNames.map((n, i) => (
+                            <span key={"j" + i} className={n.subbed ? "cell-name subbed" : "cell-name"}>
+                              {n.name}{i < jNames.length - 1 ? "," : ""}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {daySubs && daySubs.length > 0 && <div className="cell-sub-dot" title="대근 있음" />}
                 </button>
               );
@@ -743,6 +775,8 @@ const STYLE = `
 .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
 .cell { background: var(--panel-alt); border: 1px solid var(--border); border-top: 3px solid; border-radius: 8px; min-height: 112px; padding: 9px; display: flex; flex-direction: column; cursor: pointer; text-align: left; font-family: inherit; position: relative; }
 .cell-names { margin-top: 5px; font-size: 11px; line-height: 1.4; color: var(--muted); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; }
+.admin-cell-names { margin-top: 5px; display: flex; flex-direction: column; gap: 2px; }
+.admin-cell-names-row { font-size: 10px; line-height: 1.3; color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .cell-name { margin-right: 2px; }
 .cell-name.subbed { color: var(--amber); font-weight: 600; }
 .cell.dim { opacity: 0.35; }
@@ -788,6 +822,7 @@ const STYLE = `
   .cell-date { font-size: 12px; }
   .cell-badge { width: 17px; height: 17px; font-size: 10px; }
   .cell-names { font-size: 9.5px; -webkit-line-clamp: 3; }
+  .admin-cell-names-row { font-size: 9px; }
   .month-label { font-size: 16px; min-width: 90px; }
 }
 `;
